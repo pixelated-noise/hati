@@ -6,12 +6,11 @@
             [hati.utils :refer [at-least]])
   (:import [java.io ByteArrayInputStream]))
 
-
 (defn- clojure-block? [el]
   (at-least el
             {:tag     :pre
              :content [{:tag   :code
-                        :attrs {:class "language-code"}}]}))
+                        :attrs {:class "language-clojure"}}]}))
 
 (defn highlight-clojure [html]
   (let [zipper (-> (str "<html>" html "</html>")
@@ -22,13 +21,11 @@
         hi     (loop [loc zipper]
                  (if (zip/end? loc)
                    (zip/root loc)
-                   (if (= "language-clojure" (-> loc zip/node :attrs :class))
-                     (do
-                       (prn (-> loc zip/node))
-                      (-> loc (zip/edit update :content
-                                        (fn [lines]
-                                          [(glow/highlight-html
-                                            (str/join "\n" lines))])) zip/next recur))
+                   (if (-> loc zip/node clojure-block?)
+                     (-> loc (zip/edit update :content
+                                       (fn [lines]
+                                         [(glow/highlight-html
+                                           (str/join "\n" lines))])) zip/next recur)
                      (-> loc zip/next recur))))]
     (-> (with-out-str (xml/emit-element hi))
         (str/replace "<html>\n" "")

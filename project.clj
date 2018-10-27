@@ -9,4 +9,5 @@
                  [enlive "1.1.6"]
                  [venantius/glow "0.1.5"]
                  [org.asciidoctor/asciidoctorj "1.5.6"]
-                 [com.vladsch.flexmark/flexmark-all "0.34.48"]])
+                 [com.vladsch.flexmark/flexmark-all "0.34.48"]]
+  :profiles {:dev {:source-paths ["src" "dev" "test"]}})
