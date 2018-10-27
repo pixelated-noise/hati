@@ -27,36 +27,48 @@
 (defn- top-level? [loc]
   (-> loc zip/up zip/up nil?))
 
+
+(defn- node-type [loc]
+  (let [n (z/node loc)]
+   (cond (docstring? loc)        :docstring
+         (and (top-level? loc)
+              (node/comment? n)) :top-level-comment
+         (node/comment? n)       :inner-comment
+         (newline? loc)          :newline
+         :else                   :code)))
+
+
 (defn- strip-comment [s]
   (str/replace s #"^;+\s?" ""))
 
 
-(defn extract-comments [code-string]
-  (let [comments (transient [])
-        zz       (z/of-string code-string)]
+(defn- comment-info [loc]
+  (let [n         (z/node loc)
+        node-type (node-type loc)]
+   (merge (meta n)
+          (when (= node-type :docstring)
+            {:docstring-of ""})
+          {:tag       (node/tag n)
+           :type      node-type
+           :top-level (top-level? loc)
+           :string    (if (= node-type :docstring)
+                        (read-string (node/string n))
+                        (strip-comment (node/string n)))})))
+
+
+(defn sieve [code-string]
+  (let [prose (transient [])
+        code  (transient [])
+        zz    (z/of-string code-string)]
     (loop [loc zz]
       (when-not (z/end? loc)
-        (let [n         (z/node loc)
-              node-type (cond (docstring? loc)        :docstring
-                              (and (top-level? loc)
-                                   (node/comment? n)) :top-level-comment
-                              (node/comment? n)       :inner-comment
-                              (newline? loc)          :newline
-                              :else                   :other)]
-          (when-not (= node-type :other)
-            (conj!
-             comments
-             (merge (meta n)
-                    (when (= node-type :docstring)
-                      {:docstring-of ""})
-                    {:tag       (node/tag n)
-                     :type      node-type
-                     :top-level (top-level? loc)
-                     :string    (if (= node-type :docstring)
-                                  (read-string (node/string n))
-                                  (strip-comment (node/string n)))})))
-          (recur (zip/next loc)))))
-    (persistent! comments)))
+        (if-not (= :code (node-type loc))
+          (conj! prose (comment-info loc))
+          (when (top-level? loc)
+            (conj! code (zip/node loc)))) ;;TODO strip inline comments
+        (recur (zip/next loc))))
+    {:prose (persistent! prose)
+     :code  (persistent! code)}))
 
 (comment
-  (extract-comments (slurp "test-resources/code.clj")))
+  (sieve (slurp "test-resources/code.clj")))
