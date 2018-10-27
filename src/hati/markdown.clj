@@ -3,9 +3,14 @@
            [com.vladsch.flexmark.parser Parser]
            [com.vladsch.flexmark.html HtmlRenderer]))
 
-(defn render [s]
+;; https://github.com/vsch/flexmark-java/wiki/Attributes-Extension
+
+(defn parse [s]
+  (let [options (MutableDataSet.)
+        parser  (-> (Parser/builder options) .build)]
+    (.parse parser s)))
+
+(defn ->html [doc]
   (let [options  (MutableDataSet.)
-        parser   (-> (Parser/builder options) .build)
-        renderer (-> (HtmlRenderer/builder options) .build)
-        doc      (.parse parser s)]
+        renderer (-> (HtmlRenderer/builder options) .build)]
     (.render renderer doc)))

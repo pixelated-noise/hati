@@ -25,7 +25,7 @@
   (-> loc z/node node/tag (= :newline)))
 
 (defn- strip-comment [s]
-  (str/replace s #"^;+\s" ""))
+  (str/replace s #"^;+\s?" ""))
 
 
 (defn extract-comments [code-string]
