@@ -1,14 +1,14 @@
 # hati
 
-A Clojure library designed to ... well, that part is up to you.
+Maturity level: vaporware
 
-## Usage
+A Clojure library to generate documentation from comments and
+docstrings. Inspired my marginalia.
 
-FIXME
 
 ## License
 
-Copyright © 2018 FIXME
+Copyright © 2018 Pixelated Noise Ltd
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
