@@ -1,10 +1,18 @@
+;;comments before ns macro
+
 (ns resources.code)
 
 
-;; = Top-level comment
+;; # Top-level header 1
 
-;; == Top-level comment 2
-;; appearing on multiple lines
+;; ## Top-level header 2
+;; appearing on *multiple* lines
+
+
+;; ```clojure
+;; (fn1 foo bar
+;;      baz adlrin)
+;; ```
 
 (
  defn fn1

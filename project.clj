@@ -5,4 +5,6 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [rewrite-clj "0.6.1"]
-                 [org.asciidoctor/asciidoctorj "1.5.6"]])
+                 [hiccup "1.0.5"]
+                 [org.asciidoctor/asciidoctorj "1.5.6"]
+                 [com.vladsch.flexmark/flexmark-all "0.34.48"]])
