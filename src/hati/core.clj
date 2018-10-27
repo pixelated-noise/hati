@@ -2,7 +2,8 @@
   (:require [rewrite-clj.parser :as p]
             [rewrite-clj.node :as node]
             [rewrite-clj.zip :as z]
-            [clojure.zip :as zip]))
+            [clojure.zip :as zip]
+            [clojure.string :as str]))
 
 
 (def form (p/parse-string-all (str "(defn my-function \"Multiplies \nby 3\" [a]\n"
@@ -44,7 +45,8 @@
 (defn- newline? [loc]
   (-> loc z/node node/tag (= :newline)))
 
-(defn- strip-comment [])
+(defn- strip-comment [s]
+  (str/replace s #"^;+\s*" ""))
 
 
 (defn extract-comments [code-string]
@@ -52,18 +54,22 @@
         zz       (z/of-string code-string)]
     (loop [loc zz]
       (when-not (z/end? loc)
-        (let [n (z/node loc)]
-          (when (or (docstring? loc)
-                    (node/comment? n)
-                    (newline? loc))
+        (let [n         (z/node loc)
+              node-type (cond (docstring? loc)  :docstring
+                              (node/comment? n) :comment
+                              (newline? loc)    :newline
+                              :else             :other)]
+          (when-not (= node-type :other)
             (conj!
              comments
              (merge (meta n)
+                    (when (= node-type :docstring)
+                      {:docstring-of ""})
                     {:tag          (node/tag n)
-                     :docstring-of ""
-                     :string       (if (= :multi-line (node/tag n))
+                     :type         node-type
+                     :string       (if (= node-type :docstring)
                                      (read-string (node/string n))
-                                     (node/string n))})))
+                                     (strip-comment (node/string n)))})))
           (recur (zip/next loc)))))
     (persistent! comments)))
 
