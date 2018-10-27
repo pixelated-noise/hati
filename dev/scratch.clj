@@ -2,7 +2,8 @@
   (:require [hati.parser :as parser]
             [hati.markdown :as md]
             [hati.html :as html]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [clojure.pprint :as pp]))
 
 ;;(println (node/string form))
 
@@ -33,32 +34,9 @@
   )
 
 (comment
-  (do
-    (def zz (z/of-string (slurp "test-resources/code.clj")))
-    (loop [loc zz]
-      (when-not (z/end? loc)
-        (let [n (z/node loc)]
-          ;;(prn n 'SEXPR (node/sexpr n))
-          ;;(prn (node/tag n) '--> (node/string n))
-          ;;(when (defn-list? n) (prn 'DEFN!))
-          (when (or (docstring? loc)1
-                    (node/comment? n)
-                    (newline? loc))
-            (prn (merge (meta n)
-                        {:tag          (node/tag n)
-                         :docstring-of ""
-                         :string       (if (= :multi-line (node/tag n))
-                                         (read-string (node/string n))
-                                         (node/string n))}))
-            ;; (if (= :multi-line (node/tag n))
-            ;;   (println (read-string (node/string n)))
-            ;;   (println (node/string n)))
-            )
-          (recur (zip/next loc))))))
-  )
+  (pp/pprint (parser/extract-comments (slurp "test-resources/code.clj")))
 
-(comment
   (do
-   (def p (parser/extract-comments (slurp "test-resources/code.clj")))1
+   (def p (parser/extract-comments (slurp "test-resources/code.clj")))
    (print (html/highlight-clojure (md/->html (md/parse (str/join (map :string p)))))))
   )

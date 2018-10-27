@@ -24,6 +24,9 @@
 (defn- newline? [loc]
   (-> loc z/node node/tag (= :newline)))
 
+(defn- top-level? [loc]
+  (-> loc zip/up zip/up nil?))
+
 (defn- strip-comment [s]
   (str/replace s #"^;+\s?" ""))
 
@@ -34,21 +37,24 @@
     (loop [loc zz]
       (when-not (z/end? loc)
         (let [n         (z/node loc)
-              node-type (cond (docstring? loc)  :docstring
-                              (node/comment? n) :comment
-                              (newline? loc)    :newline
-                              :else             :other)]
+              node-type (cond (docstring? loc)        :docstring
+                              (and (top-level? loc)
+                                   (node/comment? n)) :top-level-comment
+                              (node/comment? n)       :inner-comment
+                              (newline? loc)          :newline
+                              :else                   :other)]
           (when-not (= node-type :other)
             (conj!
              comments
              (merge (meta n)
                     (when (= node-type :docstring)
                       {:docstring-of ""})
-                    {:tag          (node/tag n)
-                     :type         node-type
-                     :string       (if (= node-type :docstring)
-                                     (read-string (node/string n))
-                                     (strip-comment (node/string n)))})))
+                    {:tag       (node/tag n)
+                     :type      node-type
+                     :top-level (top-level? loc)
+                     :string    (if (= node-type :docstring)
+                                  (read-string (node/string n))
+                                  (strip-comment (node/string n)))})))
           (recur (zip/next loc)))))
     (persistent! comments)))
 
