@@ -9,9 +9,9 @@
 
 (defn- clojure-block? [el]
   (at-least el
-            {:tag :pre
-             :content [{:tag     :code
-                        :attrs   {:class "language-code"}}]}))
+            {:tag     :pre
+             :content [{:tag   :code
+                        :attrs {:class "language-code"}}]}))
 
 (defn highlight-clojure [html]
   (let [zipper (-> (str "<html>" html "</html>")
