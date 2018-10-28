@@ -28,7 +28,7 @@
     (def zz (z/of-string (slurp "test-resources/code.clj")))
     (loop [loc zz]
       (when-not (z/end? loc)
-        (let [n (z/node loc)]1
+        (let [n (z/node loc)]
           (prn n)
           (recur (zip/next loc))))))
   )

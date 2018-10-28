@@ -8,6 +8,14 @@
 (defn- drop-ws [coll]
   (drop-while node/whitespace-or-comment? coll))
 
+(defn- ws? [node]
+  (or (node/whitespace-or-comment? node)
+      (node/linebreak? node)))
+
+(defn- left-skip-ws [loc]
+  (first (drop-while (comp ws? zip/node)
+                     (iterate zip/left (zip/left loc)))))
+
 (defn- defn-list? [n]
   (and (= :list (node/tag n))
        (->> n node/children drop-ws first node/string (= "defn"))))
@@ -47,7 +55,7 @@
         node-type (node-type loc)]
    (merge (meta n)
           (when (= node-type :docstring)
-            {:docstring-of ""})
+            {:docstring-of (-> loc left-skip-ws zip/node node/string)})
           {:tag       (node/tag n)
            :type      node-type
            :top-level (top-level? loc)
