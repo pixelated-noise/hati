@@ -22,18 +22,27 @@
   (first (drop-while #(when % (-> % zip/node node/tag #{:comma :whitespace}))
                      (iterate zip/left (zip/left loc)))))
 
+
 (defn- defn-list? [n]
   (and (= :list (node/tag n))
        (->> n node/children drop-ws first node/string (= "defn"))))
+
+(defn- def-list? [n]
+  (and (= :list (node/tag n))
+       (->> n node/children drop-ws first node/string (= "def"))))
 
 (defn- string-node? [n]
   (and (not (node/whitespace-or-comment? n))
        (or (= :multi-line (node/tag n))
            (string? (node/sexpr n)))))
 
-(defn- docstring? [loc]
+(defn- fn-docstring? [loc]
   (and (string-node? (z/node loc))
        (-> loc z/up z/node defn-list?)))
+
+(defn- def-docstring? [loc]
+  (and (string-node? (z/node loc))
+       (-> loc z/up z/node def-list?)))
 
 (defn- newline? [loc]
   (-> loc z/node node/tag (= :newline)))
@@ -52,7 +61,8 @@
 
 (defn- node-type [loc]
   (let [n (z/node loc)]
-    (cond (docstring? loc)        :docstring
+    (cond (fn-docstring? loc)     :fn-docstring
+          (def-docstring? loc)    :def-docstring
           (and (top-level? loc)
                (node/comment? n)) :top-level-comment
           (sexp-comment? loc)     :sexp-comment
@@ -110,9 +120,8 @@
 
 (defn sieve [code-string]
   (let [prose (transient [])
-        code  (transient [])
-        zz    (z/of-string code-string)]
-    (loop [loc zz]
+        code  (transient [])]
+    (loop [loc (z/of-string code-string)]
       (when-not (z/end? loc)
         (if-not (= :code (node-type loc))
           (conj! prose (comment-info loc))

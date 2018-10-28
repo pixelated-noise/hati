@@ -8,6 +8,8 @@
 ;; ## Top-level header 2
 ;; appearing on *multiple* lines
 
+(def pi "Pi, at least some of it" 3.14)
+
 
 ;; ```clojure
 ;; (fn1 foo bar
