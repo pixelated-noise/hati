@@ -31,6 +31,10 @@
   (and (= :list (node/tag n))
        (->> n node/children drop-ws first node/string (= "def"))))
 
+(defn- ns-list? [n]
+  (and (= :list (node/tag n))
+       (->> n node/children drop-ws first node/string (= "ns"))))
+
 (defn- string-node? [n]
   (and (not (node/whitespace-or-comment? n))
        (or (= :multi-line (node/tag n))
@@ -43,6 +47,10 @@
 (defn- def-docstring? [loc]
   (and (string-node? (z/node loc))
        (-> loc z/up z/node def-list?)))
+
+(defn- ns-docstring? [loc]
+  (and (string-node? (z/node loc))
+       (-> loc z/up z/node ns-list?)))
 
 (defn- newline? [loc]
   (-> loc z/node node/tag (= :newline)))
@@ -63,6 +71,7 @@
   (let [n (z/node loc)]
     (cond (fn-docstring? loc)     :fn-docstring
           (def-docstring? loc)    :def-docstring
+          (ns-docstring? loc)     :ns-docstring
           (and (top-level? loc)
                (node/comment? n)) :top-level-comment
           (sexp-comment? loc)     :sexp-comment
@@ -84,7 +93,7 @@
            {:tag       (node/tag n)
             :type      node-type
             :top-level (top-level? loc)
-            :string    (if (= node-type :docstring)
+            :string    (if (#{:fn-docstring :def-docstring :ns-docstring} node-type)
                          (read-string (node/string n))
                          (strip-comment (node/string n)))})))
 

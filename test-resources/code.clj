@@ -1,6 +1,7 @@
 ;;comments before ns macro
 
-(ns resources.code)
+(ns resources.code
+  "This is a dummy namespace to test the parser of hati")
 
 
 ;; # Top-level header 1
