@@ -1,23 +1,46 @@
 (ns hati.parser
   (:require [rewrite-clj.parser :as p]
             [rewrite-clj.node :as node]
+            [rewrite-clj.node.protocols :as node.protocols]
             [rewrite-clj.zip :as z]
             [clojure.zip :as zip]
             [clojure.string :as str]))
 
-(defn- drop-ws [coll]
+;; A node of zero length
+
+(defrecord NoneNode []
+  node.protocols/Node
+  (tag [_] :none)
+  (printable-only? [_] true)
+  (sexpr [_] (throw (UnsupportedOperationException.)))
+  (length [_] 0)
+  (string [_] "")
+
+  Object
+  (toString [this] ""))
+
+
+(defn- drop-ws
+  "Drop all whitespace or comments from a collection of nodes."
+  [coll]
   (drop-while node/whitespace-or-comment? coll))
 
-(defn- dead-space? [node]
+(defn- dead-space?
+  "Check if a node is whitespace, comment or linebreak."
+  [node]
   (or (node/whitespace-or-comment? node)
       (node/linebreak? node)))
 
-(defn- left-skip-dead-space [loc]
+(defn- left-skip-dead-space
+  "Like zip/left, but skipping all dead space (whitespaces, comments,
+  linebreaks)."
+  [loc]
   (first (drop-while (comp dead-space? zip/node)
                      (iterate zip/left (zip/left loc)))))
 
 (defn- left-skip-ws
-  "Does not skip newlines"
+  "Like zip/left, but skipping commas and whitespaces. Does not skip
+  newlines."
   [loc]
   (first (drop-while #(when % (-> % zip/node node/tag #{:comma :whitespace}))
                      (iterate zip/left (zip/left loc)))))
@@ -58,7 +81,10 @@
 (defn- top-level? [loc]
   (-> loc zip/up zip/up nil?))
 
-(defn- sexp-comment? [loc]
+(defn- sexp-comment?
+  "A sexp comment is a comment that starts after a sexp, on the same
+  line. The theory is that it is providing a commentary on the sexp."
+  [loc]
   ;; it's a comment
   (and (some-> loc zip/node node/comment?)
        ;; ...and if you skip all whitespace to its left, you don't find a newline nor a comment
@@ -84,17 +110,9 @@
   (str/replace s #"^;+\s?" ""))
 
 
-(defn- strip-prose [node]
-  (let [m (meta node)]
-    (loop [loc (z/of-string (node/string node))] ;;TODO pretty wasteful
-      (if (zip/end? loc)
-        (assoc m :string (-> loc zip/root node/string))
-        (if (#{:code :newline} (node-type loc))
-          (-> loc zip/next recur)
-          (-> loc zip/remove zip/next recur))))))
-
-
-(defn- comment-info [loc]
+(defn- prose-info
+  "Construct a map about the prose pointed to by the zipper location."
+  [loc]
   (let [n         (z/node loc)
         node-type (node-type loc)]
     (merge (meta n)
@@ -107,6 +125,8 @@
                          (read-string (node/string n))
                          (strip-comment-syntax (node/string n)))})))
 
+;; This section is about aggregating consecutive prose maps into one
+;; for easier processing.
 
 (defn agg-prose [{row-a    :row
                   string-a :string
@@ -119,6 +139,7 @@
           :end-row end-row-b
           :end-col end-col-b
           :string  (str string-a string-b)}))
+
 
 (defn consecutive-prose? [a b]
   (and
@@ -137,15 +158,48 @@
           [] coll))
 
 
+(defn- newlines-only
+  "Convert a node's string into a newlines node depending on how many
+  newlines the original string contained (if any). This is necessary
+  because some rewrite-clj includes newline characters into comment
+  nodes instead of making separate newline nodes."
+  [node]
+  (let [c (-> node node/string (str/replace #"[^\n]" "") count)]
+    (if (zero? c)
+      (NoneNode.)
+      (node/newlines c))))
+
+(defn- strip-prose
+  "Given a node, strip all its non-code and non-newline nodes. The
+  newline characters of the stripped nodes are maintained (using
+  `newlines-only`) to avoid breaking formatting."
+  [node]
+  (let [orig-meta (meta node)]
+    (loop [loc (z/of-string (node/string node))] ;;TODO pretty wasteful
+      (if (zip/end? loc)
+        (merge (-> loc zip/root) orig-meta)
+        (if (#{:code :newline} (node-type loc))
+          (-> loc zip/next recur)
+          (-> loc (zip/edit newlines-only) zip/next recur))))))
+
+
 (defn sieve [code-string]
   (let [prose (transient [])
         code  (transient [])]
     (loop [loc (z/of-string code-string)]
       (when-not (z/end? loc)
-        (if-not (= :code (node-type loc))
-          (conj! prose (comment-info loc))
-          (when (top-level? loc)
-            (conj! code (strip-prose (zip/node loc)))))
+        (let [tt (node-type loc)]
+          (cond (= :newline tt)
+                (do
+                  (conj! prose (prose-info loc))
+                  (conj! code (prose-info loc)))
+
+                (and (= :code tt)
+                     (top-level? loc))
+                (conj! code (strip-prose (zip/node loc)))
+
+                :else
+                (conj! prose (prose-info loc))))
         (recur (zip/next loc))))
     {:prose (agg-consecutive-prose (persistent! prose))
      :code  (persistent! code)}))

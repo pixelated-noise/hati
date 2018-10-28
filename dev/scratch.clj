@@ -41,7 +41,13 @@
        parser/sieve
        :code
        (map :string)
-       (map println))
+       (map print)
+       dorun)
+  (->> "test-resources/code.clj"
+       slurp
+       parser/sieve
+       :code
+       pp/pprint)
 
   (do
    (def p (parser/sieve (slurp "test-resources/code.clj")))
