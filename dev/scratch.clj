@@ -3,7 +3,8 @@
             [hati.markdown :as md]
             [hati.html :as html]
             [clojure.string :as str]
-            [clojure.pprint :as pp]))
+            [clojure.pprint :as pp]
+            [rewrite-clj.node :as node]))
 
 ;;(println (node/string form))
 
@@ -35,6 +36,12 @@
 
 (comment
   (pp/pprint (:prose (parser/sieve (slurp "test-resources/code.clj"))))
+  (->> "test-resources/code.clj"
+       slurp
+       parser/sieve
+       :code
+       (map :string)
+       (map println))
 
   (do
    (def p (parser/sieve (slurp "test-resources/code.clj")))

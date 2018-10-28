@@ -80,8 +80,18 @@
           :else                   :code)))
 
 
-(defn- strip-comment [s]
+(defn- strip-comment-syntax [s]
   (str/replace s #"^;+\s?" ""))
+
+
+(defn- strip-prose [node]
+  (let [m (meta node)]
+    (loop [loc (z/of-string (node/string node))] ;;TODO pretty wasteful
+      (if (zip/end? loc)
+        (assoc m :string (-> loc zip/root node/string))
+        (if (#{:code :newline} (node-type loc))
+          (-> loc zip/next recur)
+          (-> loc zip/remove zip/next recur))))))
 
 
 (defn- comment-info [loc]
@@ -95,7 +105,7 @@
             :top-level (top-level? loc)
             :string    (if (#{:fn-docstring :def-docstring :ns-docstring} node-type)
                          (read-string (node/string n))
-                         (strip-comment (node/string n)))})))
+                         (strip-comment-syntax (node/string n)))})))
 
 
 (defn agg-prose [{row-a    :row
@@ -135,7 +145,7 @@
         (if-not (= :code (node-type loc))
           (conj! prose (comment-info loc))
           (when (top-level? loc)
-            (conj! code (zip/node loc)))) ;;TODO strip inline comments
+            (conj! code (strip-prose (zip/node loc)))))
         (recur (zip/next loc))))
     {:prose (agg-consecutive-prose (persistent! prose))
      :code  (persistent! code)}))
