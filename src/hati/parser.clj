@@ -8,12 +8,18 @@
 (defn- drop-ws [coll]
   (drop-while node/whitespace-or-comment? coll))
 
-(defn- ws? [node]
+(defn- dead-space? [node]
   (or (node/whitespace-or-comment? node)
       (node/linebreak? node)))
 
-(defn- left-skip-ws [loc]
-  (first (drop-while (comp ws? zip/node)
+(defn- left-skip-dead-space [loc]
+  (first (drop-while (comp dead-space? zip/node)
+                     (iterate zip/left (zip/left loc)))))
+
+(defn- left-skip-ws
+  "Does not skip newlines"
+  [loc]
+  (first (drop-while #(when % (-> % zip/node node/tag #{:comma :whitespace}))
                      (iterate zip/left (zip/left loc)))))
 
 (defn- defn-list? [n]
@@ -35,15 +41,24 @@
 (defn- top-level? [loc]
   (-> loc zip/up zip/up nil?))
 
+(defn- sexp-comment? [loc]
+  ;; it's a comment
+  (and (some-> loc zip/node node/comment?)
+       ;; ...and if you skip all whitespace to its left, you don't find a newline nor a comment
+       (let [left-node (some-> loc left-skip-ws zip/node)]
+         (and (not (node/linebreak? left-node))
+              (not (node/comment? left-node))))))
+
 
 (defn- node-type [loc]
   (let [n (z/node loc)]
-   (cond (docstring? loc)        :docstring
-         (and (top-level? loc)
-              (node/comment? n)) :top-level-comment
-         (node/comment? n)       :inner-comment
-         (newline? loc)          :newline
-         :else                   :code)))
+    (cond (docstring? loc)        :docstring
+          (and (top-level? loc)
+               (node/comment? n)) :top-level-comment
+          (sexp-comment? loc)     :sexp-comment
+          (node/comment? n)       :inner-comment
+          (newline? loc)          :newline
+          :else                   :code)))
 
 
 (defn- strip-comment [s]
@@ -53,30 +68,34 @@
 (defn- comment-info [loc]
   (let [n         (z/node loc)
         node-type (node-type loc)]
-   (merge (meta n)
-          (when (= node-type :docstring)
-            {:docstring-of (-> loc left-skip-ws zip/node node/string)})
-          {:tag       (node/tag n)
-           :type      node-type
-           :top-level (top-level? loc)
-           :string    (if (= node-type :docstring)
-                        (read-string (node/string n))
-                        (strip-comment (node/string n)))})))
+    (merge (meta n)
+           (when (= node-type :docstring)
+             {:docstring-of (-> loc left-skip-dead-space zip/node node/string)})
+           {:tag       (node/tag n)
+            :type      node-type
+            :top-level (top-level? loc)
+            :string    (if (= node-type :docstring)
+                         (read-string (node/string n))
+                         (strip-comment (node/string n)))})))
 
 
 (defn agg-prose [{row-a    :row
                   string-a :string
                   :as      a}
                  {string-b  :string
-                  end-row-b :end-row}]
+                  end-row-b :end-row
+                  end-col-b :end-col}]
   (merge a
          {:row     row-a
           :end-row end-row-b
+          :end-col end-col-b
           :string  (str string-a string-b)}))
 
 (defn consecutive-prose? [a b]
   (and
-   (= (:type a) (:type b))
+   (or (= (:type a) (:type b))
+       (and (= :sexp-comment (:type a))
+            (= :inner-comment (:type b))))
    (= (:col a) (:col b))
    (= (:end-row a) (:row b))))
 
