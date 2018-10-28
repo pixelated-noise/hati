@@ -56,6 +56,31 @@
                         (strip-comment (node/string n)))})))
 
 
+(defn agg-prose [{row-a    :row
+                  string-a :string
+                  :as      a}
+                 {string-b  :string
+                  end-row-b :end-row}]
+  (merge a
+         {:row     row-a
+          :end-row end-row-b
+          :string  (str string-a string-b)}))
+
+(defn consecutive-prose? [a b]
+  (and
+   (= (:type a) (:type b))
+   (= (:col a) (:col b))
+   (= (:end-row a) (:row b))))
+
+(defn agg-consecutive-prose [coll]
+  (reduce (fn [agg x]
+            (if (consecutive-prose? (last agg) x)
+              (conj (vec (butlast agg))
+                    (agg-prose (last agg) x))
+              (conj agg x)))
+          [] coll))
+
+
 (defn sieve [code-string]
   (let [prose (transient [])
         code  (transient [])
@@ -67,7 +92,7 @@
           (when (top-level? loc)
             (conj! code (zip/node loc)))) ;;TODO strip inline comments
         (recur (zip/next loc))))
-    {:prose (persistent! prose)
+    {:prose (agg-consecutive-prose (persistent! prose))
      :code  (persistent! code)}))
 
 (comment

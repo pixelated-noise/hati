@@ -34,9 +34,9 @@
   )
 
 (comment
-  (pp/pprint (parser/extract-comments (slurp "test-resources/code.clj")))
+  (pp/pprint (:prose (parser/sieve (slurp "test-resources/code.clj"))))
 
   (do
-   (def p (parser/extract-comments (slurp "test-resources/code.clj")))
+   (def p (parser/sieve (slurp "test-resources/code.clj")))
    (print (html/highlight-clojure (md/->html (md/parse (str/join (map :string p)))))))
   )

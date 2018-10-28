@@ -23,8 +23,17 @@
   passes the run report to the mailer function that generates run or
   exception reports."
  ([x]
-  ;; function inline-comment
-  (+ x x)))
+  ;; *stand-alone* inner comment
+  (+ x x)
+  (let [x 10]
+    ;; let's do some printing but also make this comment artificially
+    ;; long so that it ends up on multiple lines
+    (println 20)
+    (println 20) ;; Inner *line* comment that gets too long and takes
+                 ;; up extra lines making part of it look like it's a
+                 ;; stand-alone comment
+    (println 20)
+    (println 20))))
 
 (defn fn2
   "This is the main function used for running a pipeline."
