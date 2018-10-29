@@ -24,6 +24,7 @@ docstrings. Inspired my marginalia.
   code, and to hide certain categories of tagged paragraphs.
 * Provide links back to github (or other code hosting sites).
 * What about different versions???
+* Dynadoc???
 
 ## License
 
