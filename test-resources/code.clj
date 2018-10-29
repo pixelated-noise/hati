@@ -1,7 +1,8 @@
 ;;comments before ns macro
 
 (ns resources.code
-  "This is a dummy namespace to test the parser of hati")
+  "This is a dummy namespace to test the parser of hati"
+  (:require [clojure.string :as str]))
 
 
 ;; # Top-level header 1
@@ -14,7 +15,7 @@
 
 ;; ```clojure
 ;; (fn1 foo bar
-;;      baz adlrin)
+;;      baz aldrin)
 ;; ```
 
 (
@@ -38,10 +39,9 @@
     (println 30)
     (println 40))))
 
+"This is a stray string value"
+
 (defn fn2
   "This is the main function used for running a pipeline."
   ([x]
    (+ x x)))
-
-
-"This is a stray string value"

@@ -40,8 +40,8 @@
        slurp
        parser/sieve
        :code
-       (map :string)
-       (map print)
+       (map node/string)
+       (map println)
        dorun)
   (->> "test-resources/code.clj"
        slurp

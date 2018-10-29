@@ -3,6 +3,7 @@
             [rewrite-clj.node :as node]
             [rewrite-clj.node.protocols :as node.protocols]
             [rewrite-clj.zip :as z]
+            [rewrite-clj.zip.base :as zip.base]
             [clojure.zip :as zip]
             [clojure.string :as str]))
 
@@ -62,6 +63,15 @@
   (and (not (node/whitespace-or-comment? n))
        (or (= :multi-line (node/tag n))
            (string? (node/sexpr n)))))
+
+(defn- blank-line?
+  "A whitespace location with newlines or nils on either side."
+  [loc]
+  (when (-> loc zip/node node/whitespace?)
+    (let [left  (zip/left loc)
+          right (zip/right loc)]
+      (and (or (nil? left) (-> left zip/node node/linebreak?))
+           (or (nil? right) (-> right zip/node node/linebreak?))))))
 
 (defn- fn-docstring? [loc]
   (and (string-node? (z/node loc))
@@ -177,10 +187,17 @@
   (let [orig-meta (meta node)]
     (loop [loc (z/of-string (node/string node))] ;;TODO pretty wasteful
       (if (zip/end? loc)
-        (merge (-> loc zip/root) orig-meta)
-        (if (#{:code :newline} (node-type loc))
-          (-> loc zip/next recur)
-          (-> loc (zip/edit newlines-only) zip/next recur))))))
+        (zip/root loc)
+        (if (#{:code :newline} (node-type loc)) (-> loc zip/next recur)
+            (-> loc (zip/edit newlines-only) zip/next recur))))))
+
+
+(defn- remove-blank-lines
+  [loc]
+  (loop [loc (zip.base/edn loc)]
+    (cond (zip/end? loc)    (zip/root loc)
+          (blank-line? loc) (-> loc zip/remove zip/next recur)
+          :else             (-> loc zip/next recur))))
 
 
 (defn sieve [code-string]
@@ -192,11 +209,12 @@
           (cond (= :newline tt)
                 (do
                   (conj! prose (prose-info loc))
-                  (conj! code (prose-info loc)))
+                  ;;(conj! code (prose-info loc))
+                  )
 
                 (and (= :code tt)
                      (top-level? loc))
-                (conj! code (strip-prose (zip/node loc)))
+                (conj! code (remove-blank-lines (strip-prose (zip/node loc))))
 
                 :else
                 (conj! prose (prose-info loc))))
