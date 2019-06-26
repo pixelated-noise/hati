@@ -3,7 +3,7 @@
 Maturity level: vaporware
 
 A Clojure library to generate documentation from comments and
-docstrings. Inspired my marginalia.
+docstrings. Inspired by marginalia.
 
 ## Thoughts
 
